@@ -59,7 +59,7 @@ resource "aws_subnet" "private" {
 
 resource "aws_instance" "web" {
   ami           = "ami-0c02fb55956c7d316"
-  instance_type = "m5.xlarge"
+  instance_type = "m5.2xlarge"
   subnet_id     = aws_subnet.public.id
 
   tags = {
