@@ -1,0 +1,44 @@
+name: GreenOps Carbon Analysis
+
+on:
+  pull_request:
+    paths:
+      - 'terraform/**.tf'
+
+jobs:
+  greenops:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.5"
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init -backend=false
+
+      - name: Terraform Plan
+        working-directory: terraform
+        run: |
+          terraform plan -out=tfplan
+          terraform show -json tfplan > ../plan.json
+        env:
+          AWS_ACCESS_KEY_ID: "AKIAIOSFODNN7EXAMPLE"
+          AWS_SECRET_ACCESS_KEY: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+          AWS_DEFAULT_REGION: "us-east-1"
+
+      - name: GreenOps Carbon Analysis
+        uses: omrdev1/greenops-cli@v0
+        with:
+          plan-file: plan.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          post-suggestions: true
+          api-key: ${{ secrets.GREENOPS_API_KEY }}
