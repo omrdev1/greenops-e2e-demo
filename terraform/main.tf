@@ -75,7 +75,7 @@ resource "aws_instance" "web" {
 
 resource "aws_instance" "api" {
   ami           = "ami-0c02fb55956c7d316"
-  instance_type = "m5.large"
+  instance_type = "m5.xlarge"  # changed for demo — GreenOps will suggest m6g.xlarge
   subnet_id     = aws_subnet.public.id
 
   tags = {
