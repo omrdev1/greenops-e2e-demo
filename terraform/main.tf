@@ -30,7 +30,7 @@ resource "aws_vpc" "main" {
 
   tags = {
     Name        = "greenops-demo-vpc"
-    Environment = "demo"
+    Environment = "production"
     ManagedBy   = "terraform"
   }
 }
