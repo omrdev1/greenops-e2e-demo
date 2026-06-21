@@ -32,6 +32,7 @@ resource "aws_vpc" "main" {
     Name        = "greenops-demo-vpc"
     Environment = "demo"
     ManagedBy   = "terraform"
+    TestRun     = "getting-started-link-check"
   }
 }
 
