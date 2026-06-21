@@ -1,0 +1,9 @@
+# Terraform local state and provider cache
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/tfplan
+terraform/plan.json
+
+# OS generated files
+.DS_Store
