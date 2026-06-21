@@ -11,7 +11,7 @@ terraform {
 provider "aws" {
   region = "us-east-1"
 
-  # Skip credential validation — plan only, nothing is provisioned
+  # Skip credential validation. Plan only, nothing is provisioned.
   skip_credentials_validation = true
   skip_requesting_account_id  = true
   skip_metadata_api_check     = true
@@ -53,7 +53,7 @@ resource "aws_subnet" "private" {
 }
 
 # -----------------------------------------------------------------------
-# EC2 — web server
+# EC2: web server
 # GreenOps will recommend: m6g.xlarge (ARM) or shift to eu-north-1
 # -----------------------------------------------------------------------
 
@@ -69,13 +69,13 @@ resource "aws_instance" "web" {
 }
 
 # -----------------------------------------------------------------------
-# EC2 — API server
+# EC2: API server
 # GreenOps will recommend: m6g.large (ARM) or shift to eu-north-1
 # -----------------------------------------------------------------------
 
 resource "aws_instance" "api" {
   ami           = "ami-0c02fb55956c7d316"
-  instance_type = "m5.xlarge"  # changed for demo — GreenOps will suggest m6g.xlarge
+  instance_type = "m5.xlarge"  # changed for demo, GreenOps will suggest m6g.xlarge
   subnet_id     = aws_subnet.public.id
 
   tags = {
@@ -85,7 +85,7 @@ resource "aws_instance" "api" {
 }
 
 # -----------------------------------------------------------------------
-# RDS — database
+# RDS: database
 # GreenOps will recommend: db.m6g.large or shift to eu-north-1
 # -----------------------------------------------------------------------
 
@@ -119,3 +119,71 @@ resource "aws_db_instance" "main" {
 output "web_instance_type" { value = aws_instance.web.instance_type }
 output "api_instance_type" { value = aws_instance.api.instance_type }
 output "db_instance_class" { value = aws_db_instance.main.instance_class }
+
+# -----------------------------------------------------------------------
+# EKS cluster + node group
+# GreenOps will report this as m5.large x 2 (autoscaling minimum size,
+# not the desired_size of 3) and recommend an ARM upgrade or region shift
+# across the whole node group.
+# -----------------------------------------------------------------------
+
+resource "aws_iam_role" "eks_cluster" {
+  name = "greenops-demo-eks-cluster-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "eks.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role" "eks_node_group" {
+  name = "greenops-demo-eks-node-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "ec2.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_eks_cluster" "main" {
+  name     = "greenops-demo-cluster"
+  role_arn = aws_iam_role.eks_cluster.arn
+
+  vpc_config {
+    subnet_ids = [aws_subnet.public.id, aws_subnet.private.id]
+  }
+
+  tags = {
+    Name        = "greenops-demo-cluster"
+    Environment = "demo"
+  }
+}
+
+resource "aws_eks_node_group" "workers" {
+  cluster_name    = aws_eks_cluster.main.name
+  node_group_name = "greenops-demo-workers"
+  node_role_arn   = aws_iam_role.eks_node_group.arn
+  subnet_ids      = [aws_subnet.public.id, aws_subnet.private.id]
+  instance_types  = ["m5.large"]
+
+  scaling_config {
+    desired_size = 3
+    min_size     = 2
+    max_size     = 6
+  }
+
+  tags = {
+    Name        = "greenops-demo-eks-workers"
+    Environment = "demo"
+  }
+}
+
+output "eks_node_group_instance_types" { value = aws_eks_node_group.workers.instance_types }
